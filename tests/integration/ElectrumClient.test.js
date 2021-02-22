@@ -1,4 +1,3 @@
-/* global it, describe, jasmine */
 const bitcoin = require('bitcoinjs-lib');
 const net = require('net');
 const tls = require('tls');

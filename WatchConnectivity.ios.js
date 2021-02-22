@@ -1,5 +1,11 @@
 import { useContext, useEffect } from 'react';
-import { updateApplicationContext, watchEvents, useReachability, useInstalled } from 'react-native-watch-connectivity';
+import {
+  updateApplicationContext,
+  watchEvents,
+  useReachability,
+  useInstalled,
+  transferCurrentComplicationUserInfo,
+} from 'react-native-watch-connectivity';
 import { InteractionManager } from 'react-native';
 import { Chain } from './models/bitcoinUnits';
 import loc, { formatBalance, transactionTimeToReadable } from './loc';
@@ -7,7 +13,9 @@ import { BlueStorageContext } from './blue_modules/storage-context';
 import Notifications from './blue_modules/notifications';
 
 function WatchConnectivity() {
-  const { walletsInitialized, wallets, fetchWalletTransactions, saveToDisk, txMetadata } = useContext(BlueStorageContext);
+  const { walletsInitialized, wallets, fetchWalletTransactions, saveToDisk, txMetadata, preferredFiatCurrency } = useContext(
+    BlueStorageContext,
+  );
   const isReachable = useReachability();
   const isInstalled = useInstalled(); // true | false
 
@@ -17,7 +25,21 @@ function WatchConnectivity() {
       watchEvents.on('message', handleMessages);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [walletsInitialized, wallets, isReachable, isInstalled]);
+  }, [walletsInitialized, wallets, preferredFiatCurrency, isReachable, isInstalled]);
+
+  useEffect(() => {
+    if (walletsInitialized && preferredFiatCurrency) {
+      try {
+        transferCurrentComplicationUserInfo({
+          preferredFiatCurrency: JSON.parse(preferredFiatCurrency).endPointKey,
+        });
+      } catch (e) {
+        console.log('WatchConnectivity useEffect preferredFiatCurrency error');
+        console.log(e);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preferredFiatCurrency, walletsInitialized]);
 
   const handleMessages = (message, reply) => {
     if (message.request === 'createInvoice') {

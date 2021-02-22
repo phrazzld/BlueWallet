@@ -141,7 +141,6 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
   },
-
   buttonStyle: {
     backgroundColor: 'transparent',
   },
@@ -151,8 +150,6 @@ const styles = StyleSheet.create({
   },
 });
 
-LightningSettings.navigationOptions = navigationStyle({
-  title: loc.settings.lightning_settings,
-});
+LightningSettings.navigationOptions = navigationStyle({}, opts => ({ ...opts, title: loc.settings.lightning_settings }));
 
 export default LightningSettings;
