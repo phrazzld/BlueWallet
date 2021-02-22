@@ -146,8 +146,10 @@ class TorSocket {
   connect(port, host, callback) {
     console.log('connecting TOR socket...', host, port);
     (async () => {
+      console.log('starting tor...');
       await tor.startIfNotStarted();
-      const iWillConnectISwear = tor.createTcpConnection({ target: host + ':' + port }, (data, err) => {
+      console.log('started tor');
+      const iWillConnectISwear = tor.createTcpConnection({ target: host + ':' + port, connectionTimeout: 15000 }, (data, err) => {
         if (err) {
           console.log('TOR socket onData error, closing: ', err);
           this._passOnEvent('close', err);
