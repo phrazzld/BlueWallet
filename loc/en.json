@@ -305,6 +305,7 @@
     "lightning_error_lndhub_uri": "Not a valid LNDHub URI",
     "lightning_saved": "Your changes have been saved successfully.",
     "lightning_settings": "Lightning Settings",
+    "tor_settings": "TOR Settings",
     "lightning_settings_explain": "To connect to your own LND node, please install LNDHub and put its URL here in settings. Leave blank to use BlueWallet’s LNDHub (lndhub.io). Wallets created after saving changes will connect to the specified LNDHub.",
     "network": "Network",
     "network_broadcast": "Broadcast Transaction",

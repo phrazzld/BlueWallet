@@ -8,6 +8,7 @@ class Torsbee {
   baseURI = '';
 
   constructor(opts) {
+    opts = opts || {};
     this.baseURI = opts.baseURI || this.baseURI;
   }
 
@@ -147,7 +148,14 @@ class TorSocket {
     console.log('connecting TOR socket...', host, port);
     (async () => {
       console.log('starting tor...');
-      await tor.startIfNotStarted();
+      try {
+        await tor.startIfNotStarted();
+      } catch (e) {
+        console.warn('Could not bootstrap TOR', e);
+        this._passOnEvent('error', 'Could not bootstrap TOR');
+        await tor.stopIfRunning();
+        return false;
+      }
       console.log('started tor');
       const iWillConnectISwear = tor.createTcpConnection({ target: host + ':' + port, connectionTimeout: 15000 }, (data, err) => {
         if (err) {
@@ -209,6 +217,49 @@ class TorSocket {
     }
   }
 }
+
+module.exports.getDaemonStatus = async () => {
+  try {
+    return await tor.getDaemonStatus();
+  } catch (_) {
+    return false;
+  }
+};
+
+module.exports.stopIfRunning = async () => {
+  try {
+    return await tor.stopIfRunning();
+  } catch (_) {
+    return false;
+  }
+};
+
+module.exports.startIfNotStarted = async () => {
+  try {
+    return await tor.startIfNotStarted();
+  } catch (_) {
+    return false;
+  }
+};
+
+module.exports.testSocket = async () => {
+  const c = new Torsbee();
+  return await c.testSocket();
+};
+
+module.exports.testHttp = async () => {
+  const api = new Torsbee({
+    baseURI: 'http://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion:80/',
+  });
+  const torResponse = await api.get('/api/tx/a84dbcf0d2550f673dda9331eea7cab86b645fd6e12049755c4b47bd238adce9', {
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+  const json = torResponse.body;
+  if (json.txid !== 'a84dbcf0d2550f673dda9331eea7cab86b645fd6e12049755c4b47bd238adce9')
+    throw new Error('TOR failure, got ' + JSON.stringify(torResponse));
+};
 
 module.exports.Torsbee = Torsbee;
 module.exports.Socket = TorSocket;
