@@ -5,35 +5,12 @@ import { View, StyleSheet } from 'react-native';
 import navigationStyle from '../../components/navigationStyle';
 import { BlueButton, BlueCard, BlueLoading, BlueSpacing20, BlueText, SafeBlueArea } from '../../BlueComponents';
 import loc from '../../loc';
-import { BlueCurrentTheme } from '../../components/themes';
 
 const torrific = require('../../blue_modules/torrific');
 
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-  },
-  uri: {
-    flexDirection: 'row',
-    borderColor: BlueCurrentTheme.colors.formBorder,
-    borderBottomColor: BlueCurrentTheme.colors.formBorder,
-    borderWidth: 1,
-    borderBottomWidth: 0.5,
-    backgroundColor: BlueCurrentTheme.colors.inputBackgroundColor,
-    minHeight: 44,
-    height: 44,
-    alignItems: 'center',
-    borderRadius: 4,
-  },
-  uriText: {
-    flex: 1,
-    color: '#81868e',
-    marginHorizontal: 8,
-    minHeight: 36,
-    height: 36,
-  },
-  buttonStyle: {
-    backgroundColor: 'transparent',
   },
   torSupported: {
     color: '#81868e',
