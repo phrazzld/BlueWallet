@@ -1,8 +1,18 @@
 /* global alert */
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
-import { ActivityIndicator, View, TextInput, TouchableOpacity, Linking, ScrollView, StyleSheet, KeyboardAvoidingView } from 'react-native';
-import Clipboard from '@react-native-community/clipboard';
+import {
+  ActivityIndicator,
+  Platform,
+  View,
+  TextInput,
+  TouchableOpacity,
+  Linking,
+  ScrollView,
+  StyleSheet,
+  KeyboardAvoidingView,
+} from 'react-native';
+import Clipboard from '@react-native-clipboard/clipboard';
 import { Text } from 'react-native-elements';
 import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
 
@@ -121,7 +131,12 @@ export default class CPFP extends Component {
       newFeeRate: '',
       nonReplaceable: false,
     });
-    await this.checkPossibilityOfCPFP();
+    try {
+      await this.checkPossibilityOfCPFP();
+    } catch (_) {
+      // if anything goes wrong we just show "this is not bumpable" message
+      this.setState({ nonReplaceable: true, isLoading: false });
+    }
   }
 
   async checkPossibilityOfCPFP() {
@@ -158,7 +173,7 @@ export default class CPFP extends Component {
 
   renderStage1(text) {
     return (
-      <KeyboardAvoidingView behavior="position">
+      <KeyboardAvoidingView enabled={!Platform.isPad} behavior="position">
         <SafeBlueArea style={styles.root}>
           <BlueSpacing />
           <BlueCard style={styles.center}>

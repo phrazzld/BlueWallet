@@ -29,6 +29,123 @@ describe('BlueWallet UI Tests', () => {
     process.env.TRAVIS && require('fs').writeFileSync(lockFile, '1');
   });
 
+  it('all settings screens are works', async () => {
+    const lockFile = '/tmp/travislock.' + hashIt(jasmine.currentTest.fullName);
+    if (process.env.TRAVIS) {
+      if (require('fs').existsSync(lockFile))
+        return console.warn('skipping', JSON.stringify(jasmine.currentTest.fullName), 'as it previously passed on Travis');
+    }
+    await yo('WalletsList');
+
+    // go to settings, press SelfTest and wait for OK
+    await element(by.id('SettingsButton')).tap();
+
+    // general
+    // enable AdvancedMode
+    await element(by.id('GeneralSettings')).tap();
+    await element(by.id('AdvancedMode')).tap();
+    await device.pressBack();
+    //
+    // currency
+    // change currency to ARS ($) and switch it back to USD ($)
+    await element(by.id('Currency')).tap();
+    await element(by.text('ARS ($)')).tap();
+    await expect(element(by.text('Prices are obtained from Yadio'))).toBeVisible();
+    await element(by.text('USD ($)')).tap();
+    await device.pressBack();
+
+    // language
+    // change language to Chinese (ZH), test it and switch back to English
+    await element(by.id('Language')).tap();
+    await element(by.text('Chinese (ZH)')).tap();
+    await device.pressBack();
+    await expect(element(by.text('语言'))).toBeVisible();
+    await element(by.id('Language')).tap();
+    await element(by.text('English')).tap();
+    await device.pressBack();
+
+    // security
+    await element(by.id('SecurityButton')).tap();
+    await device.pressBack();
+
+    // network
+    await element(by.id('NetworkSettings')).tap();
+
+    // network -> electrum server
+    // change electrum server to electrum.blockstream.info and revert it back
+    await element(by.id('ElectrumSettings')).tap();
+    await element(by.id('HostInput')).replaceText('electrum.blockstream.info\n');
+    await element(by.id('PortInput')).replaceText('50001\n');
+    await element(by.id('SSLPortInput')).replaceText('50002\n');
+    await element(by.id('Save')).tap();
+    await sup('OK');
+    await element(by.text('OK')).tap();
+    await element(by.id('ResetToDefault')).tap();
+    await sup('OK');
+    await element(by.text('OK')).tap();
+    await expect(element(by.id('HostInput'))).toHaveText('');
+    await expect(element(by.id('PortInput'))).toHaveText('');
+    await expect(element(by.id('SSLPortInput'))).toHaveText('');
+    await device.pressBack();
+
+    // network -> lightning
+    // change URI and revert it back
+    await element(by.id('LightningSettings')).tap();
+    await element(by.id('URIInput')).replaceText('invalid\n');
+    await element(by.id('Save')).tap();
+    await sup('OK');
+    await expect(element(by.text('Not a valid LNDHub URI'))).toBeVisible();
+    await element(by.text('OK')).tap();
+    await element(by.id('URIInput')).replaceText('https://lndhub.herokuapp.com\n');
+    await element(by.id('Save')).tap();
+    await sup('OK');
+    await expect(element(by.text('Your changes have been saved successfully.'))).toBeVisible();
+    await element(by.text('OK')).tap();
+    await element(by.id('URIInput')).replaceText('\n');
+    await element(by.id('Save')).tap();
+    await sup('OK');
+    await expect(element(by.text('Your changes have been saved successfully.'))).toBeVisible();
+    await element(by.text('OK')).tap();
+    await device.pressBack();
+
+    // network -> broadcast
+    // try to broadcast wrong tx
+    await element(by.id('Broadcast')).tap();
+    await element(by.id('TxHex')).replaceText('invalid\n');
+    await element(by.id('BroadcastButton')).tap();
+    await sup('OK');
+    // await expect(element(by.text('the transaction was rejected by network rules....'))).toBeVisible();
+    await element(by.text('OK')).tap();
+    await device.pressBack();
+    await device.pressBack();
+
+    // notifications
+    // turn on notifications if available
+    if (await expectToBeVisible('NotificationSettings')) {
+      await element(by.id('NotificationSettings')).tap();
+      await element(by.id('NotificationsSwitch')).tap();
+      await sup('OK');
+      await element(by.text('OK')).tap();
+      await element(by.id('NotificationsSwitch')).tap();
+      await device.pressBack();
+    }
+
+    // privacy
+    // trigger switches
+    await element(by.id('SettingsPrivacy')).tap();
+    await element(by.id('ClipboardSwith')).tap();
+    await element(by.id('ClipboardSwith')).tap();
+    await element(by.id('QuickActionsSwith')).tap();
+    await element(by.id('QuickActionsSwith')).tap();
+    await device.pressBack();
+
+    // about
+    await element(by.id('AboutButton')).tap();
+    await device.pressBack();
+
+    process.env.TRAVIS && require('fs').writeFileSync(lockFile, '1');
+  });
+
   it('can create wallet, reload app and it persists. then go to receive screen, set custom amount and label. Dismiss modal and go to WalletsList.', async () => {
     const lockFile = '/tmp/travislock.' + hashIt(jasmine.currentTest.fullName);
     if (process.env.TRAVIS) {
@@ -418,6 +535,7 @@ describe('BlueWallet UI Tests', () => {
 
     await device.pressBack();
     await device.pressBack();
+    await element(by.id('changeAmountUnitButton')).tap(); // switched to FIAT
     await element(by.id('BlueAddressInputScanQrButton')).tap();
 
     // tapping 10 times invisible button is a backdoor:
@@ -467,6 +585,42 @@ describe('BlueWallet UI Tests', () => {
     assert.strictEqual(transaction.outs.length, 2);
     assert.strictEqual(transaction.outs[0].value, 50000);
 
+    // now, testing send many feature
+
+    await device.pressBack();
+    await device.pressBack();
+    // we already have one output, lest add another two
+    await element(by.id('advancedOptionsMenuButton')).tap();
+    await element(by.id('AddRecipient')).tap();
+    await yo('Transaction1'); // adding a recipient autoscrolls it to the last one
+    await element(by.id('AddressInput').withAncestor(by.id('Transaction1'))).replaceText('bc1q063ctu6jhe5k4v8ka99qac8rcm2tzjjnuktyrl');
+    await element(by.id('BitcoinAmountInput').withAncestor(by.id('Transaction1'))).typeText('0.0002\n');
+
+    await element(by.id('advancedOptionsMenuButton')).tap();
+    await element(by.id('AddRecipient')).tap();
+    await yo('Transaction2'); // adding a recipient autoscrolls it to the last one
+    await element(by.id('AddressInput').withAncestor(by.id('Transaction2'))).replaceText('bc1q063ctu6jhe5k4v8ka99qac8rcm2tzjjnuktyrl');
+    await element(by.id('BitcoinAmountInput').withAncestor(by.id('Transaction2'))).typeText('0.0003\n');
+
+    // remove second output
+    await element(by.id('Transaction2')).swipe('right', 'fast', NaN, 0.2);
+    await element(by.id('advancedOptionsMenuButton')).tap();
+    await element(by.id('RemoveRecipient')).tap();
+
+    // creating and verifying. tx should have 3 outputs
+    try {
+      await element(by.id('CreateTransactionButton')).tap();
+    } catch (_) {}
+
+    await element(by.id('TransactionDetailsButton')).tap();
+    txhex = await extractTextFromElementById('TxhexInput');
+    transaction = bitcoin.Transaction.fromHex(txhex);
+    assert.strictEqual(transaction.outs.length, 3);
+    assert.strictEqual(bitcoin.address.fromOutputScript(transaction.outs[0].script), 'bc1qnapskphjnwzw2w3dk4anpxntunc77v6qrua0f7');
+    assert.strictEqual(transaction.outs[0].value, 50000);
+    assert.strictEqual(bitcoin.address.fromOutputScript(transaction.outs[1].script), 'bc1q063ctu6jhe5k4v8ka99qac8rcm2tzjjnuktyrl');
+    assert.strictEqual(transaction.outs[1].value, 20000);
+
     // now, testing sendMAX feature:
 
     await device.pressBack();
@@ -507,6 +661,64 @@ describe('BlueWallet UI Tests', () => {
 
     // this is fully-signed tx, "this is tx hex" help text should appear
     await yo('DynamicCode');
+    await device.pressBack();
+    await device.pressBack();
+
+    // let's test wallet details screens
+    await element(by.id('WalletDetails')).tap();
+
+    // rename test
+    await element(by.id('WalletNameInput')).replaceText('testname\n');
+    await element(by.id('Save')).tap();
+    await sup('OK');
+    await element(by.text('OK')).tap();
+    await expect(element(by.id('WalletLabel'))).toHaveText('testname');
+    await element(by.id('WalletDetails')).tap();
+
+    // wallet export
+    await element(by.id('WalletDetailsScroll')).swipe('up', 'fast', 1);
+    await element(by.id('WalletExport')).tap();
+    await element(by.id('WalletExportScroll')).swipe('up', 'fast', 1);
+    await expect(element(by.id('Secret'))).toHaveText(process.env.HD_MNEMONIC_BIP84);
+    await device.pressBack();
+
+    // XPUB
+    await element(by.id('WalletDetailsScroll')).swipe('up', 'fast', 1);
+    await element(by.id('XPub')).tap();
+    await expect(element(by.id('BlueCopyTextToClipboard'))).toBeVisible();
+    await device.pressBack();
+
+    // Marketplace
+    await element(by.id('WalletDetailsScroll')).swipe('up', 'fast', 1);
+    await element(by.id('Marketplace')).tap();
+    await expect(element(by.id('MarketplaceWebView'))).toBeVisible();
+    await element(by.id('NavigationCloseButton')).tap();
+
+    // Broadcast
+    await element(by.id('WalletDetailsScroll')).swipe('up', 'fast', 1);
+    await element(by.id('Broadcast')).tap();
+    await expect(element(by.id('BroadcastView'))).toBeVisible();
+    await device.pressBack();
+
+    // IsItMyAddress
+    await element(by.id('WalletDetailsScroll')).swipe('up', 'fast', 1);
+    await element(by.id('IsItMyAddress')).tap();
+    await element(by.id('AddressInput')).replaceText('bc1q063ctu6jhe5k4v8ka99qac8rcm2tzjjnuktyrl');
+    await element(by.id('CheckAddress')).tap();
+    await expect(element(by.id('Result'))).toHaveText('testname owns bc1q063ctu6jhe5k4v8ka99qac8rcm2tzjjnuktyrl');
+    await element(by.id('AddressInput')).replaceText('invalid');
+    await element(by.id('CheckAddress')).tap();
+    await expect(element(by.id('Result'))).toHaveText('None of the available wallets own the provided address.');
+    await device.pressBack();
+
+    // Delete
+    await element(by.id('WalletDetailsScroll')).swipe('up', 'fast', 1);
+    await element(by.id('DeleteButton')).tap();
+    await sup('Yes, delete');
+    await element(by.text('Yes, delete')).tap();
+    await element(by.type('android.widget.EditText')).typeText('105526');
+    await element(by.text('OK')).tap();
+    await expect(element(by.id('NoTransactionsMessage'))).toBeVisible();
 
     process.env.TRAVIS && require('fs').writeFileSync(lockFile, '1');
   });
@@ -891,18 +1103,36 @@ async function helperCreateWallet(walletName) {
 
 async function helperImportWallet(importText, expectedWalletLabel, expectedBalance) {
   await yo('WalletsList');
+
   await element(by.id('WalletsList')).swipe('left', 'fast', 1); // in case emu screen is small and it doesnt fit
   // going to Import Wallet screen and importing mnemonic
   await element(by.id('CreateAWallet')).tap();
   await element(by.id('ImportWallet')).tap();
   await element(by.id('MnemonicInput')).replaceText(importText);
-  try {
-    await element(by.id('DoImport')).tap();
-  } catch (_) {}
-  if (process.env.TRAVIS) await sleep(60000);
-  await sup('OK', 3 * 61000); // waiting for wallet import
-  await element(by.text('OK')).tap();
-  // ok, wallet imported
+
+  let retries = 0;
+  while (true) {
+    retries = retries + 1;
+    try {
+      await element(by.id('DoImport')).tap();
+    } catch (_) {}
+    if (process.env.TRAVIS) await sleep(60000);
+
+    // waiting for import result
+    await sup('OK', 3 * 61000);
+    await element(by.text('OK')).tap();
+
+    try {
+      await expect(element(by.id('ImportError'))).not.toBeVisible();
+      break; // import succeded
+    } catch (e) {
+      // exit after two failed attempts
+      if (retries === 2) break;
+      // restart import
+      await element(by.id('ImportError')).tap();
+      await element(by.text('Try again')).tap();
+    }
+  }
 
   // lets go inside wallet
   await element(by.text(expectedWalletLabel)).tap();
@@ -944,3 +1174,12 @@ async function extractTextFromElementById(id) {
     }
   }
 }
+
+const expectToBeVisible = async id => {
+  try {
+    await expect(element(by.id(id))).toBeVisible();
+    return true;
+  } catch (e) {
+    return false;
+  }
+};

@@ -1,37 +1,21 @@
 /* global alert */
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
-import { Alert, View, TextInput, TouchableOpacity, LayoutAnimation, StyleSheet, Keyboard, Platform } from 'react-native';
+import { Alert, View, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import DefaultPreference from 'react-native-default-preference';
 import RNWidgetCenter from 'react-native-widget-center';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ScrollView, TouchableWithoutFeedback } from 'react-native-gesture-handler';
-import showPopupMenu from 'react-native-popup-menu-android';
+import { ScrollView } from 'react-native-gesture-handler';
+
 import loc from '../../loc';
 import { AppStorage } from '../../class';
 import DeeplinkSchemaMatch from '../../class/deeplink-schema-match';
 import navigationStyle from '../../components/navigationStyle';
-import {
-  BlueAddressInput,
-  BlueButton,
-  BlueCard,
-  BlueDismissKeyboardInputAccessory,
-  BlueLoading,
-  BlueSpacing20,
-  BlueText,
-  SafeBlueArea,
-} from '../../BlueComponents';
+import { BlueButton, BlueButtonLink, BlueCard, BlueLoading, BlueSpacing20, BlueText, SafeBlueArea } from '../../BlueComponents';
 import { BlueCurrentTheme } from '../../components/themes';
-import ToolTip from 'react-native-tooltip';
-import Clipboard from '@react-native-community/clipboard';
-import { Icon } from 'react-native-elements';
-
 const BlueElectrum = require('../../blue_modules/BlueElectrum');
 
 export default class ElectrumSettings extends Component {
-  tooltip = React.createRef();
-  hostText = React.createRef();
-
   constructor(props) {
     super(props);
     const server = props?.route?.params?.server;
@@ -40,7 +24,6 @@ export default class ElectrumSettings extends Component {
       serverHistory: [],
       config: {},
       server,
-      defaultPreferenceServer: {},
     };
   }
 
@@ -54,18 +37,6 @@ export default class ElectrumSettings extends Component {
     const sslPort = await AsyncStorage.getItem(AppStorage.ELECTRUM_SSL_PORT);
     const serverHistoryStr = await AsyncStorage.getItem(AppStorage.ELECTRUM_SERVER_HISTORY);
     const serverHistory = JSON.parse(serverHistoryStr) || [];
-    const defaultPreferenceServer = { host, port, sslPort };
-    try {
-      const defaultPreferenceHost = await DefaultPreference.get(AppStorage.ELECTRUM_HOST);
-      const defaultPreferencePort = await DefaultPreference.get(AppStorage.ELECTRUM_TCP_PORT);
-      const defaultPreferenceSSLPort = await DefaultPreference.get(AppStorage.ELECTRUM_SSL_PORT);
-
-      defaultPreferenceServer.host = defaultPreferenceHost;
-      defaultPreferenceServer.port = defaultPreferencePort;
-      defaultPreferenceServer.sslPort = defaultPreferenceSSLPort;
-    } catch {
-      console.log('DefaultPreference not set. Most likely Android.');
-    }
 
     this.setState({
       isLoading: false,
@@ -73,7 +44,6 @@ export default class ElectrumSettings extends Component {
       port,
       sslPort,
       serverHistory,
-      defaultPreferenceServer,
     });
 
     const inverval = setInterval(async () => {
@@ -120,35 +90,16 @@ export default class ElectrumSettings extends Component {
     });
   };
 
-  deleteServer = server => {
-    Alert.alert(loc.settings.electrum_history, loc.formatString(loc.settings.electrum_delete_server, { server: server.host }), [
-      { text: loc._.cancel, onPress: () => console.log('Cancel Pressed'), style: 'cancel' },
-      {
-        text: loc._.ok,
-        onPress: async () => {
-          const serverHistory = this.state.serverHistory.filter(savedServer => savedServer !== server);
-          await AsyncStorage.setItem(
-            AppStorage.ELECTRUM_SERVER_HISTORY,
-            JSON.stringify(serverHistory.filter(savedServer => savedServer !== server)),
-          );
-          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-          this.setState({ serverHistory });
-        },
-      },
-    ]);
-  };
-
-  clearHistoryAlert = () => {
+  clearHistoryAlert() {
     Alert.alert(loc.settings.electrum_clear_alert_title, loc.settings.electrum_clear_alert_message, [
-      { text: loc._.cancel, onPress: () => console.log('Cancel Pressed'), style: 'cancel' },
-      { text: loc._.ok, onPress: () => this.clearHistory() },
+      { text: loc.settings.electrum_clear_alert_cancel, onPress: () => console.log('Cancel Pressed'), style: 'cancel' },
+      { text: loc.settings.electrum_clear_alert_ok, onPress: () => this.clearHistory() },
     ]);
-  };
+  }
 
   clearHistory = async () => {
     this.setState({ isLoading: true }, async () => {
       await AsyncStorage.setItem(AppStorage.ELECTRUM_SERVER_HISTORY, JSON.stringify([]));
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       this.setState({
         serverHistory: [],
         isLoading: false,
@@ -157,17 +108,9 @@ export default class ElectrumSettings extends Component {
   };
 
   resetToDefault = async () => {
-    Alert.alert(loc.settings.electrum_reset_to_default, loc.settings.electrum_reset_to_default_message, [
-      { text: loc._.cancel, onPress: () => console.log('Cancel Pressed'), style: 'cancel' },
-      {
-        text: loc._.ok,
-        onPress: () => {
-          this.setState({ port: '', host: '', sslPort: '' }, () => {
-            this.save();
-          });
-        },
-      },
-    ]);
+    this.setState({ port: '', host: '', sslPort: '' }, () => {
+      this.save();
+    });
   };
 
   serverExists = server => {
@@ -178,7 +121,6 @@ export default class ElectrumSettings extends Component {
   };
 
   save = () => {
-    Keyboard.dismiss();
     const host = this.state.host ? this.state.host : '';
     const port = this.state.port ? this.state.port : '';
     const sslPort = this.state.sslPort ? this.state.sslPort : '';
@@ -216,19 +158,12 @@ export default class ElectrumSettings extends Component {
             });
             await AsyncStorage.setItem(AppStorage.ELECTRUM_SERVER_HISTORY, JSON.stringify(serverHistory));
           }
+
           try {
             await DefaultPreference.setName('group.io.bluewallet.bluewallet');
-            if (host.endsWith('onion')) {
-              const randomPeer = await BlueElectrum.getRandomHardcodedPeer();
-              await DefaultPreference.set(AppStorage.ELECTRUM_HOST, randomPeer.host);
-              await DefaultPreference.set(AppStorage.ELECTRUM_TCP_PORT, randomPeer.tcp);
-              await DefaultPreference.set(AppStorage.ELECTRUM_SSL_PORT, randomPeer.ssl);
-            } else {
-              await DefaultPreference.set(AppStorage.ELECTRUM_HOST, host);
-              await DefaultPreference.set(AppStorage.ELECTRUM_TCP_PORT, port);
-              await DefaultPreference.set(AppStorage.ELECTRUM_SSL_PORT, sslPort);
-            }
-
+            await DefaultPreference.set(AppStorage.ELECTRUM_HOST, host);
+            await DefaultPreference.set(AppStorage.ELECTRUM_TCP_PORT, port);
+            await DefaultPreference.set(AppStorage.ELECTRUM_SSL_PORT, sslPort);
             RNWidgetCenter.reloadAllTimelines();
           } catch (e) {
             // Must be running on Android
@@ -254,93 +189,27 @@ export default class ElectrumSettings extends Component {
     type === 's' ? this.setState({ sslPort: port }) : this.setState({ port: port });
   };
 
-  handleCopyPress = host => {
-    Clipboard.setString(host);
-  };
-
-  toolTipMenuOptions = [
-    {
-      id: 'copyHost',
-      label: loc.settings.copy_host,
-    },
-    {
-      id: 'copyPort',
-      label: loc.settings.copy_port,
-    },
-  ];
-
-  handleAndroidPopupMenuAction = ({ item, server }) => {
-    if (item.id === 'copyHost') {
-      Clipboard.setString(server.host);
-    } else if (item.id === 'copyPort') {
-      Clipboard.setString(server.port || server.sslPort);
-    }
-  };
-
-  showAndroidTooltip = server => {
-    showPopupMenu(this.toolTipMenuOptions, item => this.handleAndroidPopupMenuAction({ item, server }), this.hostText.current);
-  };
-
-  defaultPreferenceAlternateHost = () => {
-    const { config, defaultPreferenceServer } = this.state;
-    if (
-      RNWidgetCenter.widgetCenterSupported &&
-      config.host !== defaultPreferenceServer.host &&
-      config.port !== defaultPreferenceServer.port &&
-      config.sslPort !== defaultPreferenceServer.sslPort
-    ) {
-      return (
-        <BlueText style={styles.torSupported}>
-          {loc.formatString(loc.settings.widgets_alternate_host, {
-            server: `${this.state.defaultPreferenceServer.host}:${
-              this.state.defaultPreferenceServer.sslPort || this.state.defaultPreferenceServer.port
-            }`,
-          })}
-        </BlueText>
-      );
-    }
-
-    return null;
+  importScan = () => {
+    this.props.navigation.navigate('ScanQRCodeRoot', {
+      screen: 'ScanQRCode',
+      params: {
+        launchedBy: this.props.route.name,
+        onBarScanned: this.onBarScanned,
+        showFileImportButton: true,
+      },
+    });
   };
 
   render() {
-    const host = this.state.host ?? '';
-    const port = this.state.port ?? '';
-    const sslPort = this.state.sslPort ?? '';
     const serverHistoryItems = this.state.serverHistory.map((server, i) => {
-      let host = server.host;
-      if (host.length >= 30) host = server.host.substr(0, 6) + '...' + server.host.substr(server.host.length - 12);
       return (
         <View key={i} style={styles.serverHistoryItem}>
-          <TouchableWithoutFeedback
-            ref={this.hostText}
-            onLongPress={() => (Platform.OS === 'ios' ? this.tooltip.current.showMenu() : this.showAndroidTooltip(server))}
-          >
-            {Platform.OS === 'ios' && (
-              <ToolTip
-                ref={this.tooltip}
-                actions={[
-                  {
-                    text: loc.settings.copy_host,
-                    onPress: () => this.handleCopyPress(host),
-                  },
-                  {
-                    text: loc.settings.copy_port,
-                    onPress: () => this.handleCopyPress(server.port || server.sslPort),
-                  },
-                ]}
-              />
-            )}
-            <BlueText>{`${host}:${server.port || server.sslPort}`}</BlueText>
-          </TouchableWithoutFeedback>
-          <View style={styles.serverListRowButtonContainer}>
-            <TouchableOpacity onPress={() => this.selectServer(server)} style={styles.marginHorizontal24}>
-              <Icon type="font-awesome-5" name="plug" color={BlueCurrentTheme.colors.foregroundColor} />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => this.deleteServer(server)}>
-              <Icon type="font-awesome-5" name="trash" color={BlueCurrentTheme.colors.foregroundColor} />
-            </TouchableOpacity>
+          <View>
+            <BlueText>{`${server.host}:${server.port || server.sslPort}`}</BlueText>
           </View>
+          <TouchableOpacity onPress={() => this.selectServer(server)}>
+            <BlueText>{loc.settings.electrum_select}</BlueText>
+          </TouchableOpacity>
         </View>
       );
     });
@@ -351,9 +220,9 @@ export default class ElectrumSettings extends Component {
           <BlueCard>
             <BlueText style={styles.status}>{loc.settings.electrum_status}</BlueText>
             <View style={styles.connectWrap}>
-              <View style={[styles.container, this.state.config.connected ? styles.containerConnected : styles.containerDisconnected]}>
-                <BlueText style={this.state.config.connected ? styles.textConnected : styles.textDisconnected}>
-                  {this.state.config.connected ? loc.settings.electrum_connected : loc.settings.electrum_connected_not}
+              <View style={[styles.container, this.state.config.status === 1 ? styles.containerConnected : styles.containerDisconnected]}>
+                <BlueText style={this.state.config.status === 1 ? styles.textConnected : styles.textDisconnected}>
+                  {this.state.config.status === 1 ? loc.settings.electrum_connected : loc.settings.electrum_connected_not}
                 </BlueText>
               </View>
             </View>
@@ -362,25 +231,30 @@ export default class ElectrumSettings extends Component {
               {this.state.config.host}:{this.state.config.port}
             </BlueText>
           </BlueCard>
-
           <BlueCard>
-            <BlueAddressInput
-              onChangeText={text => this.setState({ host: text.trim() })}
-              onBarScanned={this.onBarScanned}
-              address={this.state.host}
-              isLoading={this.state.isLoading}
-              placeholder={loc.formatString(loc.settings.electrum_host, { example: '111.222.333.111' })}
-              autoCorrect={false}
-              autoCapitalize="none"
-              underlineColorAndroid="transparent"
-              numberOfLines={1}
-              launchedBy={this.props.route.name}
-              marginHorizontal={0}
-              marginVertical={0}
-              showFileImportButton
-              textContentType="URL"
-            />
-
+            <View style={styles.serverAddTitle}>
+              <BlueText style={styles.explain}>{loc.settings.electrum_settings_explain}</BlueText>
+              <TouchableOpacity testID="ResetToDefault" onPress={() => this.resetToDefault()}>
+                <BlueText>{loc.settings.electrum_reset}</BlueText>
+              </TouchableOpacity>
+            </View>
+          </BlueCard>
+          <BlueCard>
+            <View style={styles.inputWrap}>
+              <TextInput
+                placeholder={loc.formatString(loc.settings.electrum_host, { example: '111.222.333.111' })}
+                value={this.state.host}
+                onChangeText={text => this.setState({ host: text.trim() })}
+                numberOfLines={1}
+                style={styles.inputText}
+                editable={!this.state.isLoading}
+                placeholderTextColor="#81868e"
+                autoCorrect={false}
+                autoCapitalize="none"
+                underlineColorAndroid="transparent"
+                testID="HostInput"
+              />
+            </View>
             <BlueSpacing20 />
             <View style={styles.inputWrap}>
               <TextInput
@@ -394,8 +268,7 @@ export default class ElectrumSettings extends Component {
                 underlineColorAndroid="transparent"
                 autoCorrect={false}
                 autoCapitalize="none"
-                keyboardType="numeric"
-                inputAccessoryViewID={BlueDismissKeyboardInputAccessory.InputAccessoryViewID}
+                testID="PortInput"
               />
             </View>
             <BlueSpacing20 />
@@ -411,32 +284,19 @@ export default class ElectrumSettings extends Component {
                 placeholderTextColor="#81868e"
                 autoCapitalize="none"
                 underlineColorAndroid="transparent"
-                keyboardType="numeric"
-                inputAccessoryViewID={BlueDismissKeyboardInputAccessory.InputAccessoryViewID}
+                testID="SSLPortInput"
               />
             </View>
             <BlueSpacing20 />
-            <BlueDismissKeyboardInputAccessory />
-            <BlueText style={styles.torSupported}>{loc.settings.tor_supported}</BlueText>
-            {this.defaultPreferenceAlternateHost()}
+            <BlueButtonLink title={loc.wallets.import_scan_qr} onPress={this.importScan} />
             <BlueSpacing20 />
-            {this.state.isLoading ? (
-              <BlueLoading />
-            ) : (
-              <BlueButton
-                onPress={this.save}
-                title={loc.settings.save}
-                disabled={host.trim().length === 0 || (sslPort.trim().length === 0 && port.trim().length === 0)}
-              />
-            )}
-            <BlueSpacing20 />
-            {!this.state.isLoading && <BlueButton title={loc.settings.electrum_reset} onPress={this.resetToDefault} />}
+            {this.state.isLoading ? <BlueLoading /> : <BlueButton testID="Save" onPress={this.save} title={loc.settings.save} />}
           </BlueCard>
           {serverHistoryItems.length > 0 && !this.state.isLoading && (
             <BlueCard>
               <View style={styles.serverHistoryTitle}>
                 <BlueText style={styles.explain}>{loc.settings.electrum_history}</BlueText>
-                <TouchableOpacity onPress={this.clearHistoryAlert}>
+                <TouchableOpacity onPress={() => this.clearHistoryAlert()}>
                   <BlueText>{loc.settings.electrum_clear}</BlueText>
                 </TouchableOpacity>
               </View>
@@ -462,7 +322,7 @@ ElectrumSettings.propTypes = {
   }),
 };
 
-ElectrumSettings.navigationOptions = navigationStyle({}, opts => ({ ...opts, title: loc.settings.electrum_settings }));
+ElectrumSettings.navigationOptions = navigationStyle({}, opts => ({ ...opts, title: loc.settings.electrum_settings_server }));
 
 const styles = StyleSheet.create({
   root: {
@@ -480,7 +340,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexDirection: 'row',
   },
-  marginHorizontal24: { marginHorizontal: 24 },
   container: {
     paddingTop: 6,
     paddingBottom: 6,
@@ -509,11 +368,7 @@ const styles = StyleSheet.create({
   explain: {
     color: BlueCurrentTheme.colors.feeText,
     marginBottom: -24,
-  },
-  serverListRowButtonContainer: { flexDirection: 'row', justifyContent: 'space-between' },
-  torSupported: {
-    textAlign: 'center',
-    color: BlueCurrentTheme.colors.feeText,
+    flexShrink: 1,
   },
   inputWrap: {
     flexDirection: 'row',
@@ -547,7 +402,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: 20,
-    alignItems: 'center',
     borderBottomColor: BlueCurrentTheme.colors.formBorder,
     borderBottomWidth: 1,
   },

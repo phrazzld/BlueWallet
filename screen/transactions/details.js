@@ -7,7 +7,7 @@ import navigationStyle from '../../components/navigationStyle';
 import HandoffComponent from '../../components/handoff';
 import loc from '../../loc';
 import { BlueStorageContext } from '../../blue_modules/storage-context';
-import Clipboard from '@react-native-community/clipboard';
+import Clipboard from '@react-native-clipboard/clipboard';
 import ToolTipMenu from '../../components/TooltipMenu';
 const dayjs = require('dayjs');
 
@@ -204,7 +204,6 @@ const TransactionsDetails = () => {
                     onPress: handleCopyPress,
                   },
                 ]}
-                onPress={handleCopyPress}
               />
               <TouchableOpacity
                 ref={openTransactionOnBlockExplorerRef}
@@ -237,7 +236,7 @@ const TransactionsDetails = () => {
             </>
           )}
 
-          {tx.outputs.length > 0 && (
+          {tx.outputs?.length > 0 && (
             <>
               <BlueText style={[styles.rowCaption, stylesHooks.rowCaption]}>{loc.transactions.details_outputs}</BlueText>
               <BlueText style={styles.rowValue}>{tx.outputs.length}</BlueText>

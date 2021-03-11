@@ -3,6 +3,7 @@ import React, { useContext, useRef, useState, useCallback, useEffect } from 'rea
 import {
   ActivityIndicator,
   Alert,
+  findNodeHandle,
   FlatList,
   InteractionManager,
   Keyboard,
@@ -49,6 +50,7 @@ const ViewEditMultisigCosigners = () => {
   const { wallets, setWalletsWithNewOrder, setIsDrawerListBlurred } = useContext(BlueStorageContext);
   const { navigate, dispatch, goBack, addListener } = useNavigation();
   const route = useRoute();
+  const openScannerButtonRef = useRef();
   const { walletId } = route.params;
   const w = useRef(wallets.find(wallet => wallet.getID() === walletId));
   const tempWallet = useRef(new MultisigHDWallet());
@@ -473,7 +475,7 @@ const ViewEditMultisigCosigners = () => {
 
   const scanOrOpenFile = () => {
     if (isMacCatalina) {
-      fs.showActionSheet().then(result => {
+      fs.showActionSheet({ anchor: findNodeHandle(openScannerButtonRef.current) }).then(result => {
         // Triggers FlatList re-render
         setImportText(result);
         //
@@ -510,7 +512,7 @@ const ViewEditMultisigCosigners = () => {
   const renderProvideMnemonicsModal = () => {
     return (
       <BottomModal isVisible={isProvideMnemonicsModalVisible} onClose={hideProvideMnemonicsModal}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'position' : null}>
+        <KeyboardAvoidingView enabled={!Platform.isPad} behavior={Platform.OS === 'ios' ? 'position' : null}>
           <View style={[styles.modalContent, stylesHook.modalContent]}>
             <BlueTextCentered>{loc.multisig.type_your_mnemonics}</BlueTextCentered>
             <BlueSpacing20 />
@@ -525,7 +527,7 @@ const ViewEditMultisigCosigners = () => {
                 onPress={handleUseMnemonicPhrase}
               />
             )}
-            <BlueButtonLink disabled={isLoading} onPress={scanOrOpenFile} title={loc.wallets.import_scan_qr} />
+            <BlueButtonLink ref={openScannerButtonRef} disabled={isLoading} onPress={scanOrOpenFile} title={loc.wallets.import_scan_qr} />
           </View>
         </KeyboardAvoidingView>
       </BottomModal>
@@ -535,7 +537,7 @@ const ViewEditMultisigCosigners = () => {
   const renderShareModal = () => {
     return (
       <BottomModal isVisible={isShareModalVisible} onClose={hideShareModal}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'position' : null}>
+        <KeyboardAvoidingView enabled={!Platform.isPad} behavior={Platform.OS === 'ios' ? 'position' : null}>
           <View style={[styles.modalContent, stylesHook.modalContent, styles.alignItemsCenter]}>
             <Text style={[styles.headerText, stylesHook.textDestination]}>{loc.multisig.this_is_cosigners_xpub}</Text>
             <View style={styles.qrCodeContainer}>
@@ -601,7 +603,7 @@ const ViewEditMultisigCosigners = () => {
     <View style={[styles.root, stylesHook.root]}>
       <StatusBar barStyle="light-content" />
       <KeyboardAvoidingView
-        enabled
+        enabled={!Platform.isPad}
         behavior={Platform.OS === 'ios' ? 'padding' : null}
         keyboardVerticalOffset={62}
         style={[styles.mainBlock, styles.root]}

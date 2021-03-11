@@ -135,7 +135,7 @@ const WalletDetails = () => {
 
   const setLabel = async () => {
     if (walletName.trim().length > 0) {
-      wallet.setLabel(walletName);
+      wallet.setLabel(walletName.trim());
       if (wallet.type === WatchOnlyWallet.type && wallet.getSecret().startsWith('zpub')) {
         wallet.setUseWithHardwareWalletEnabled(useWithHardwareWallet);
       }
@@ -150,7 +150,7 @@ const WalletDetails = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     setOptions({
       headerRight: () => (
-        <TouchableOpacity disabled={isLoading} style={styles.save} onPress={setLabel}>
+        <TouchableOpacity testID="Save" disabled={isLoading} style={styles.save} onPress={setLabel}>
           <Text style={stylesHook.saveText}>{loc.wallets.details_save}</Text>
         </TouchableOpacity>
       ),
@@ -164,9 +164,20 @@ const WalletDetails = () => {
   }, []);
 
   useEffect(() => {
-    setSelectedWallet(walletID);
+    if (wallets.some(wallet => wallet.getID() === walletID)) {
+      setSelectedWallet(walletID);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [walletID]);
+
+  const navigateToOverviewAndDeleteWallet = () => {
+    setIsLoading(true);
+    Notifications.unsubscribe(wallet.getAllExternalAddresses(), [], []);
+    popToTop();
+    deleteWallet(wallet);
+    saveToDisk();
+    ReactNativeHapticFeedback.trigger('notificationSuccess', { ignoreAndroidSystemSettings: false });
+  };
 
   const presentWalletHasBalanceAlert = useCallback(async () => {
     ReactNativeHapticFeedback.trigger('notificationWarning', { ignoreAndroidSystemSettings: false });
@@ -176,14 +187,10 @@ const WalletDetails = () => {
         loc.formatString(loc.wallets.details_del_wb_q, { balance: wallet.getBalance() }),
         true,
         'plain-text',
+        true,
       );
       if (Number(walletBalanceConfirmation) === wallet.getBalance()) {
-        setIsLoading(true);
-        Notifications.unsubscribe(wallet.getAllExternalAddresses(), [], []);
-        deleteWallet(wallet);
-        ReactNativeHapticFeedback.trigger('notificationSuccess', { ignoreAndroidSystemSettings: false });
-        await saveToDisk();
-        popToTop();
+        navigateToOverviewAndDeleteWallet();
       } else {
         ReactNativeHapticFeedback.trigger('notificationError', { ignoreAndroidSystemSettings: false });
         setIsLoading(false);
@@ -191,7 +198,7 @@ const WalletDetails = () => {
       }
     } catch (_) {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [popToTop, wallet]);
+  }, []);
 
   const navigateToWalletExport = () => {
     navigate('WalletExportRoot', {
@@ -229,6 +236,7 @@ const WalletDetails = () => {
     return Platform.select({
       android: (
         <SecondButton
+          testID="Marketplace"
           onPress={() =>
             navigate('Marketplace', {
               fromWallet: wallet,
@@ -239,6 +247,7 @@ const WalletDetails = () => {
       ),
       ios: (
         <SecondButton
+          testID="Marketplace"
           onPress={async () => {
             Linking.openURL('https://bluewallet.io/marketplace-btc/');
           }}
@@ -374,12 +383,7 @@ const WalletDetails = () => {
             if (wallet.getBalance() > 0 && wallet.allowSend()) {
               presentWalletHasBalanceAlert();
             } else {
-              setIsLoading(true);
-              Notifications.unsubscribe(wallet.getAllExternalAddresses(), [], []);
-              popToTop();
-              ReactNativeHapticFeedback.trigger('notificationSuccess', { ignoreAndroidSystemSettings: false });
-              deleteWallet(wallet);
-              saveToDisk();
+              navigateToOverviewAndDeleteWallet();
             }
           },
           style: 'destructive',
@@ -398,7 +402,7 @@ const WalletDetails = () => {
     <SafeBlueArea style={styles.root}>
       <StatusBar barStyle="default" />
       <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-        <ScrollView contentContainerStyle={styles.scrollViewContent}>
+        <ScrollView contentContainerStyle={styles.scrollViewContent} testID="WalletDetailsScroll">
           <BlueCard style={styles.address}>
             {(() => {
               if (
@@ -414,7 +418,7 @@ const WalletDetails = () => {
               }
             })()}
             <Text style={[styles.textLabel2, stylesHook.textLabel2]}>{loc.wallets.add_wallet_name.toLowerCase()}</Text>
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'position' : null}>
+            <KeyboardAvoidingView enabled={!Platform.isPad} behavior={Platform.OS === 'ios' ? 'position' : null}>
               <View style={[styles.input, stylesHook.input]}>
                 <TextInput
                   placeholder={loc.send.details_note_placeholder}
@@ -426,6 +430,7 @@ const WalletDetails = () => {
                   style={styles.inputText}
                   editable={!isLoading}
                   underlineColorAndroid="transparent"
+                  testID="WalletNameInput"
                 />
               </View>
             </KeyboardAvoidingView>
@@ -504,7 +509,7 @@ const WalletDetails = () => {
               )}
               <BlueSpacing20 />
 
-              <SecondButton onPress={navigateToWalletExport} title={loc.wallets.details_export_backup} />
+              <SecondButton onPress={navigateToWalletExport} testID="WalletExport" title={loc.wallets.details_export_backup} />
 
               <BlueSpacing20 />
 
@@ -512,6 +517,7 @@ const WalletDetails = () => {
                 <>
                   <SecondButton
                     onPress={navigateToMultisigCoordinationSetup}
+                    testID="MultisigCoordinationSetup"
                     title={loc.multisig.export_coordination_setup.replace(/^\w/, c => c.toUpperCase())}
                   />
                 </>
@@ -520,16 +526,17 @@ const WalletDetails = () => {
               {wallet.type === MultisigHDWallet.type && (
                 <>
                   <BlueSpacing20 />
-                  <SecondButton onPress={navigateToViewEditCosigners} title={loc.multisig.view_edit_cosigners} />
+                  <SecondButton onPress={navigateToViewEditCosigners} testID="ViewEditCosigners" title={loc.multisig.view_edit_cosigners} />
                 </>
               )}
 
               {(wallet.type === HDLegacyBreadwalletWallet.type ||
                 wallet.type === HDLegacyP2PKHWallet.type ||
                 wallet.type === HDSegwitBech32Wallet.type ||
+                wallet.type === HDAezeedWallet.type ||
                 wallet.type === HDSegwitP2SHWallet.type) && (
                 <>
-                  <SecondButton onPress={navigateToXPub} title={loc.wallets.details_show_xpub} />
+                  <SecondButton onPress={navigateToXPub} testID="XPub" title={loc.wallets.details_show_xpub} />
 
                   <BlueSpacing20 />
                   {renderMarketplaceButton()}
@@ -538,16 +545,16 @@ const WalletDetails = () => {
               {wallet.type !== LightningCustodianWallet.type && (
                 <>
                   <BlueSpacing20 />
-                  <SecondButton onPress={navigateToBroadcast} title={loc.settings.network_broadcast} />
+                  <SecondButton onPress={navigateToBroadcast} testID="Broadcast" title={loc.settings.network_broadcast} />
                 </>
               )}
               <>
                 <BlueSpacing20 />
-                <SecondButton onPress={navigateToIsItMyAddress} title={loc.is_it_my_address.title} />
+                <SecondButton onPress={navigateToIsItMyAddress} testID="IsItMyAddress" title={loc.is_it_my_address.title} />
               </>
               <BlueSpacing20 />
               <BlueSpacing20 />
-              <TouchableOpacity onPress={handleDeleteButtonTapped}>
+              <TouchableOpacity onPress={handleDeleteButtonTapped} testID="DeleteButton">
                 <Text textBreakStrategy="simple" style={styles.delete}>{`${loc.wallets.details_delete}${'  '}`}</Text>
               </TouchableOpacity>
             </View>

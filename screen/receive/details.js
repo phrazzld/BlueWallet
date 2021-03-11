@@ -21,7 +21,6 @@ import {
   SecondButton,
   BlueButtonLink,
   is,
-  BlueBitcoinAmount,
   BlueText,
   BlueSpacing20,
   BlueAlertWalletExportReminder,
@@ -31,6 +30,7 @@ import BottomModal from '../../components/BottomModal';
 import Privacy from '../../blue_modules/Privacy';
 import { Chain, BitcoinUnit } from '../../models/bitcoinUnits';
 import HandoffComponent from '../../components/handoff';
+import AmountInput from '../../components/AmountInput';
 import DeeplinkSchemaMatch from '../../class/deeplink-schema-match';
 import loc from '../../loc';
 import { BlueStorageContext } from '../../blue_modules/storage-context';
@@ -171,7 +171,6 @@ const ReceiveDetails = () => {
                   onPress: handleShareQRCode,
                 },
               ]}
-              onPress={handleShareQRCode}
             />
 
             <QRCode
@@ -298,9 +297,9 @@ const ReceiveDetails = () => {
         amount = currency.satoshiToBTC(customAmount);
         break;
       case BitcoinUnit.LOCAL_CURRENCY:
-        if (BlueBitcoinAmount.conversionCache[amount + BitcoinUnit.LOCAL_CURRENCY]) {
+        if (AmountInput.conversionCache[amount + BitcoinUnit.LOCAL_CURRENCY]) {
           // cache hit! we reuse old value that supposedly doesnt have rounding errors
-          amount = currency.satoshiToBTC(BlueBitcoinAmount.conversionCache[amount + BitcoinUnit.LOCAL_CURRENCY]);
+          amount = currency.satoshiToBTC(AmountInput.conversionCache[amount + BitcoinUnit.LOCAL_CURRENCY]);
         } else {
           amount = currency.fiatToBTC(customAmount);
         }
@@ -313,14 +312,9 @@ const ReceiveDetails = () => {
   const renderCustomAmountModal = () => {
     return (
       <BottomModal isVisible={isCustomModalVisible} onClose={dismissCustomAmountModal}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'position' : null}>
+        <KeyboardAvoidingView enabled={!Platform.isPad} behavior={Platform.OS === 'ios' ? 'position' : null}>
           <View style={styles.modalContent}>
-            <BlueBitcoinAmount
-              unit={customUnit}
-              amount={customAmount || ''}
-              onChangeText={setCustomAmount}
-              onAmountUnitChange={setCustomUnit}
-            />
+            <AmountInput unit={customUnit} amount={customAmount || ''} onChangeText={setCustomAmount} onAmountUnitChange={setCustomUnit} />
             <View style={styles.customAmount}>
               <TextInput
                 onChangeText={setCustomLabel}
