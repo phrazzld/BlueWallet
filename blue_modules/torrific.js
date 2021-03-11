@@ -83,7 +83,7 @@ class Torsbee {
           }
           const json = JSON.parse(data);
           if (!json || typeof json.result === 'undefined')
-            reject(new Error('Unexpected response from TOR socket: ' + JSON.stringify(json)));
+            return reject(new Error('Unexpected response from TOR socket: ' + JSON.stringify(json)));
 
           conn.close();
           resolve();
