@@ -9,16 +9,21 @@ const ICON_MARGIN = 7;
 
 const cStyles = StyleSheet.create({
   root: {
-    position: 'absolute',
     alignSelf: 'center',
     height: '6.3%',
     minHeight: 44,
   },
+  rootAbsolute: {
+    position: 'absolute',
+    bottom: 30,
+  },
+  rootInline: {
+  },
   rootPre: {
+    position: 'absolute',
     bottom: -1000,
   },
   rootPost: {
-    bottom: 30,
     borderRadius: BORDER_RADIUS,
     flexDirection: 'row',
     overflow: 'hidden',
@@ -42,7 +47,11 @@ export const FContainer = forwardRef((props, ref) => {
   };
 
   return (
-    <View ref={ref} onLayout={onLayout} style={[cStyles.root, newWidth ? cStyles.rootPost : cStyles.rootPre]}>
+    <View
+      ref={ref}
+      onLayout={onLayout}
+      style={[cStyles.root, props.inline ? cStyles.rootInline : cStyles.rootAbsolute, newWidth ? cStyles.rootPost : cStyles.rootPre]}
+    >
       {newWidth
         ? React.Children.toArray(props.children)
             .filter(Boolean)
@@ -61,6 +70,7 @@ export const FContainer = forwardRef((props, ref) => {
 
 FContainer.propTypes = {
   children: PropTypes.oneOfType([PropTypes.arrayOf(PropTypes.element), PropTypes.element]),
+  inline: PropTypes.bool,
 };
 
 const buttonFontSize =
