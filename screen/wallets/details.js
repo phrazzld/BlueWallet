@@ -231,6 +231,14 @@ const WalletDetails = () => {
         secret: wallet.getSecret(),
       },
     });
+  const navigateToSignVerify = () =>
+    navigate('SignVerifyRoot', {
+      screen: 'SignVerify',
+      params: {
+        walletID: wallet.getID(),
+        address: wallet._getExternalAddressByIndex(0),
+      },
+    });
 
   const renderMarketplaceButton = () => {
     return Platform.select({
@@ -551,6 +559,10 @@ const WalletDetails = () => {
               <>
                 <BlueSpacing20 />
                 <SecondButton onPress={navigateToIsItMyAddress} testID="IsItMyAddress" title={loc.is_it_my_address.title} />
+              </>
+              <>
+                <BlueSpacing20 />
+                <SecondButton onPress={navigateToSignVerify} testID="SignVerify" title="SignVerify" />
               </>
               <BlueSpacing20 />
               <BlueSpacing20 />
